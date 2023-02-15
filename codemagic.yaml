@@ -1,0 +1,66 @@
+workflows:
+  android-workflow-id:
+    name: React Native Android
+    triggering:
+      events:
+        - push
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        - android-secrets
+      android_signing:
+        - codemagic.keystore
+      xcode: 13.3.1
+      cocoapods: 1.11.2
+      node: 16.15.0
+      npm: 8.5.5
+      ruby: 2.7.2
+    scripts:
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Install dependencies
+        script: |
+          yarn install
+      - name: Install Ruby and Dependencies
+        script: |
+          bundle install
+      - name: Clean gradlew
+        script: |
+          cd android && ./gradlew clean
+      - name: Fastlane Build Android release
+        script: |
+          bundle exec fastlane android build_and_playmarket --env prod
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+
+  ios-workflow-id:
+    name: iOS Sample Workflow
+    triggering:
+      events:
+        - push
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        - IOS-secrets
+        - module_credentials
+      xcode: 13.3
+      cocoapods: 1.11.2
+      node: 16.15.0
+      npm: 8.5.5
+      ruby: 2.7.2
+    scripts:
+      - name: Install dependencies
+        script: |
+          yarn install
+      - name: Install Ruby and Dependencies
+        script: |
+          bundle install
+      - name: Create main.jsbundle
+        script: |
+          yarn build:ios
+      - name: Fastlane Build IOS release
+        script: |
+          bundle exec fastlane ios build_and_testflight --env prod
