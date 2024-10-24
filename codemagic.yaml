@@ -46,7 +46,7 @@ workflows:
       groups:
         - IOS-secrets
         - module_credentials
-      xcode: 14.0
+      xcode: 15.0
       cocoapods: 1.11.2
       node: 16.15.0
       npm: 8.5.5
