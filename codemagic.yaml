@@ -8,9 +8,9 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       groups:
-        - android-secrets
+        - google_credentials
       android_signing:
-        - codemagic.keystore
+        - keystore_reference
       xcode: 13.3.1
       cocoapods: 1.11.2
       node: 16.15.0
@@ -46,7 +46,7 @@ workflows:
       groups:
         - IOS-secrets
         - module_credentials
-      xcode: 13.3
+      xcode: 14.0
       cocoapods: 1.11.2
       node: 16.15.0
       npm: 8.5.5
