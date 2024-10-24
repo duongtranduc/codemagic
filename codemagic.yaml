@@ -64,3 +64,6 @@ workflows:
       - name: Fastlane Build IOS release
         script: |
           bundle exec fastlane ios build_and_testflight --env prod
+      - name: Pod update
+        script: |
+          pod update hermes-engine --no-repo-update
