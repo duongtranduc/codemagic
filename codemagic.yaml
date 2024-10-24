@@ -61,6 +61,9 @@ workflows:
       - name: Create main.jsbundle
         script: |
           yarn build:ios
+      - name: Install Pod
+        script: |
+          gem install cocoapods
       - name: Pod update
         script: |
           pod update hermes-engine --no-repo-update
