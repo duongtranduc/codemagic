@@ -1,0 +1,129 @@
+require 'json'
+
+def get_app_version
+  if ENV["RELEASE_GIT_TAG"]
+    sh "npm version #{ENV["RELEASE_GIT_TAG"]} --allow-same-version --no-git-tag-version"
+  else
+    puts "no git tag specified, skiping..."
+  end
+
+  file = File.read('../package.json')
+  data = JSON.parse(file)
+  ENV['APP_VERSION'] = data['version']
+end
+
+lane :match_profiles do
+    app_store_connect_api_key()
+    match()
+end
+
+def playmarket_latest_code_version
+    g = google_play_track_version_codes
+    max_value = [g[0].to_i].max
+    version_updated = max_value + 1
+    android_set_version_code(gradle_file: "android/app/build.gradle", version_code: version_updated.to_i)
+end
+
+# !IOS! #
+platform :ios do
+ before_all do
+   puts "ios: before_all"
+   get_app_version
+   puts "APP_VERSION: #{ENV["APP_VERSION"]}"
+   sh "yarn --frozen-lockfile"
+  cocoapods(
+     clean_install: true,
+     podfile: "ios/Podfile"
+   )
+   ensure_env_vars(
+     env_vars: ['APP_STORE_CONNECT_API_KEY_KEY', 'MATCH_PASSWORD']
+   )
+ end
+
+  desc "Builds application and uploads it to TestFlight"
+  lane :build_and_testflight do
+    update_app_identifier(
+      xcodeproj: "ios/codemagic.xcodeproj",
+      plist_path: "codemagic/Info.plist",
+      app_identifier: "com.cicdsresearch"
+    )
+    update_info_plist(
+      xcodeproj: "ios/codemagic.xcodeproj",
+      plist_path: "codemagic/Info.plist",
+      display_name: "Research CI/CD"
+    )
+    app_store_connect_api_key(
+      key_id: "BAR36A5BBD",
+      issuer_id: "69a6de87-81a2-47e3-e053-5b8c7c11a4d1",
+      key_content: "#{ENV["APP_STORE_CONNECT_API_KEY_KEY"]}",
+      is_key_content_base64: true
+    )
+    create_keychain(
+      name: "fastlane_keychain",
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      password: "Qwerty123$",
+      lock_when_sleeps: true
+    )
+   match(
+     git_url: "git@bitbucket.org:Alina_Radyk/researchcertificates.git",
+     type: "appstore",
+     app_identifier: "com.cicdsresearch",
+     team_id: "3J355W62SK",
+     keychain_name: "fastlane_keychain",
+     keychain_password: "Qwerty123$"
+   )
+    increment_build_number({
+      xcodeproj: "ios/codemagic.xcodeproj",
+      build_number: latest_testflight_build_number({ app_identifier: "com.cicdsresearch" }) + 1,
+    })
+    increment_version_number(
+      version_number: "#{ENV["APP_VERSION"]}"
+    )
+    update_code_signing_settings(
+      path: "ios/codemagic.xcodeproj"
+    )
+    update_project_team(
+      path: "ios/codemagic.xcodeproj",
+      teamid: "3J355W62SK"
+    )
+    update_project_provisioning(
+          profile: ENV["sigh_#{ENV["MATCH_APP_IDENTIFIER"]}_#{ENV["MATCH_TYPE"]}_profile-path"],
+    )
+    gym()
+    upload_to_testflight()
+  end
+end
+
+platform :android do
+  before_all do
+      puts 'android: before_all'
+      get_app_version
+      puts "APP_VERSION: #{ENV["APP_VERSION"]}"
+      sh "yarn --frozen-lockfile"
+      ensure_env_vars(
+        env_vars: ['SUPPLY_JSON_KEY_DATA', 'RELEASE_KEYSTORE_PASSWORD', 'RELEASE_KEY_PASSWORD']
+      )
+  end
+
+  desc "Builds application and uploads it to GooglePlay Console internal track"
+  lane :build_and_playmarket do
+    android_set_version_name(
+      version_name: "#{ENV["APP_VERSION"]}",
+      gradle_file: "android/app/build.gradle",
+    )
+    android_set_version_code(
+      version_code: 1,
+      gradle_file: "android/app/build.gradle",
+    )
+
+    gradle(
+      task: "bundle",
+      flavor: "#{ENV["ENVIRONMENT"]}",
+      project_dir: 'android/',
+      gradle_path: 'gradlew',
+    )
+    upload_to_play_store()
+  end
+end
