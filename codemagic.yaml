@@ -63,6 +63,7 @@ workflows:
           yarn build:ios
       - name: Install Pod
         script: |
+          gem install activesupport -v 7.1.4.2
           gem install cocoapods
       - name: Pod update
         script: |
