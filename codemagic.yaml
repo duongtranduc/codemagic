@@ -61,10 +61,8 @@ workflows:
       - name: Create main.jsbundle
         script: |
           yarn build:ios
-      - name: Install Pod
+      - name: Update hermes-engine
         script: |
-          gem install activesupport -v 7.1.4.2
-          gem install cocoapods
           cd ios
           pod update hermes-engine --no-repo-update
       - name: Fastlane Build IOS release
